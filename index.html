@@ -1,0 +1,140 @@
+using UnityEngine;
+using System.Collections.Generic;
+
+public class BeatGridPrototype : MonoBehaviour
+{
+    [Header("Music")]
+    public AudioSource music;
+    public float beatSensitivity = 1.5f;
+
+    private float[] samples = new float[1024];
+    private float lastVolume;
+    private bool beatDetected;
+
+
+    [Header("Game")]
+    public GameObject rhythmBall;
+    public Transform[] lanes;
+
+    public int rhythmPoints = 0;
+
+
+    [Header("Ball Customization")]
+    public Material[] ballSkins;
+    public Renderer playerBall;
+
+
+    [Header("Badges")]
+    public List<string> badges = new List<string>();
+
+
+    void Start()
+    {
+        music.Play();
+    }
+
+
+    void Update()
+    {
+        DetectBeat();
+
+        if(beatDetected)
+        {
+            SpawnBeatObject();
+        }
+    }
+
+
+    // AI-style beat detection prototype
+    void DetectBeat()
+    {
+        music.GetOutputData(samples,0);
+
+        float volume = 0;
+
+        foreach(float sample in samples)
+        {
+            volume += Mathf.Abs(sample);
+        }
+
+        volume /= samples.Length;
+
+
+        if(volume > lastVolume * beatSensitivity)
+        {
+            beatDetected = true;
+        }
+        else
+        {
+            beatDetected = false;
+        }
+
+
+        lastVolume = volume;
+    }
+
+
+
+    // Creates objects on beat
+    void SpawnBeatObject()
+    {
+        int lane = Random.Range(0, lanes.Length);
+
+        Instantiate(
+            rhythmBall,
+            lanes[lane].position,
+            Quaternion.identity
+        );
+    }
+
+
+
+    // Player hits beat
+    public void HitBeat(bool perfect)
+    {
+        if(perfect)
+        {
+            rhythmPoints += 50;
+        }
+        else
+        {
+            rhythmPoints += 10;
+        }
+
+        Debug.Log(
+            "Rhythm Points: " 
+            + rhythmPoints
+        );
+    }
+
+
+
+    // Change ball appearance
+    public void ChangeBallSkin(int skinID)
+    {
+        if(skinID < ballSkins.Length)
+        {
+            playerBall.material =
+            ballSkins[skinID];
+        }
+    }
+
+
+
+    // Unlock genre badges
+    public void CompleteSong(string genre)
+    {
+        string badge = genre + " Master";
+
+
+        if(!badges.Contains(badge))
+        {
+            badges.Add(badge);
+
+            Debug.Log(
+                "Unlocked Badge: "
+                + badge
+            );
+        }
+    }
+}
