@@ -1,140 +1,784 @@
-using UnityEngine;
-using System.Collections.Generic;
-
-public class BeatGridPrototype : MonoBehaviour
-{
-    [Header("Music")]
-    public AudioSource music;
-    public float beatSensitivity = 1.5f;
-
-    private float[] samples = new float[1024];
-    private float lastVolume;
-    private bool beatDetected;
-
-
-    [Header("Game")]
-    public GameObject rhythmBall;
-    public Transform[] lanes;
-
-    public int rhythmPoints = 0;
-
-
-    [Header("Ball Customization")]
-    public Material[] ballSkins;
-    public Renderer playerBall;
-
-
-    [Header("Badges")]
-    public List<string> badges = new List<string>();
-
-
-    void Start()
-    {
-        music.Play();
-    }
-
-
-    void Update()
-    {
-        DetectBeat();
-
-        if(beatDetected)
-        {
-            SpawnBeatObject();
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beat Tap</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Beat Tap">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-    }
-
-
-    // AI-style beat detection prototype
-    void DetectBeat()
-    {
-        music.GetOutputData(samples,0);
-
-        float volume = 0;
-
-        foreach(float sample in samples)
-        {
-            volume += Mathf.Abs(sample);
+        
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1a1f35 100%);
+            color: #f1f5f9;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
         }
-
-        volume /= samples.Length;
-
-
-        if(volume > lastVolume * beatSensitivity)
-        {
-            beatDetected = true;
+        
+        .screen {
+            display: none;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
         }
-        else
-        {
-            beatDetected = false;
+        
+        .screen.active {
+            display: block;
         }
-
-
-        lastVolume = volume;
-    }
-
-
-
-    // Creates objects on beat
-    void SpawnBeatObject()
-    {
-        int lane = Random.Range(0, lanes.Length);
-
-        Instantiate(
-            rhythmBall,
-            lanes[lane].position,
-            Quaternion.identity
-        );
-    }
-
-
-
-    // Player hits beat
-    public void HitBeat(bool perfect)
-    {
-        if(perfect)
-        {
-            rhythmPoints += 50;
+        
+        /* MENU SCREEN */
+        .menu-screen {
+            background: linear-gradient(135deg, #0f172a 0%, #1a1f35 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            text-align: center;
         }
-        else
-        {
-            rhythmPoints += 10;
+        
+        .menu-screen h1 {
+            font-size: 48px;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #3b82f6, #10b981);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
         }
-
-        Debug.Log(
-            "Rhythm Points: " 
-            + rhythmPoints
-        );
-    }
-
-
-
-    // Change ball appearance
-    public void ChangeBallSkin(int skinID)
-    {
-        if(skinID < ballSkins.Length)
-        {
-            playerBall.material =
-            ballSkins[skinID];
+        
+        .menu-screen p {
+            color: #94a3b8;
+            margin-bottom: 40px;
+            font-size: 14px;
         }
-    }
-
-
-
-    // Unlock genre badges
-    public void CompleteSong(string genre)
-    {
-        string badge = genre + " Master";
-
-
-        if(!badges.Contains(badge))
-        {
-            badges.Add(badge);
-
-            Debug.Log(
-                "Unlocked Badge: "
-                + badge
-            );
+        
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
+            max-width: 300px;
         }
-    }
-}
+        
+        .btn {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .btn:active {
+            transform: scale(0.98);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #64748b, #475569);
+            box-shadow: 0 4px 12px rgba(100, 116, 139, 0.2);
+        }
+        
+        /* DIFFICULTY SCREEN */
+        .difficulty-screen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .difficulty-screen h2 {
+            font-size: 32px;
+            margin-bottom: 30px;
+        }
+        
+        .difficulty-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            width: 100%;
+            max-width: 300px;
+        }
+        
+        .difficulty-btn {
+            padding: 20px;
+            border: 2px solid rgba(59, 130, 246, 0.3);
+            border-radius: 12px;
+            background: rgba(30, 41, 59, 0.7);
+            color: #f1f5f9;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .difficulty-btn:active {
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+        }
+        
+        /* CUSTOMIZATION SCREEN */
+        .customization-screen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            text-align: center;
+            overflow-y: auto;
+        }
+        
+        .customization-screen h2 {
+            font-size: 32px;
+            margin-bottom: 30px;
+        }
+        
+        .character-preview {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: bounce 2s infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .color-picker {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 30px;
+            width: 100%;
+            max-width: 300px;
+        }
+        
+        .color-option {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .color-option.selected {
+            border-color: white;
+            transform: scale(1.1);
+        }
+        
+        /* GAME SCREEN */
+        .game-screen {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .game-header {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.1));
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid rgba(59, 130, 246, 0.2);
+        }
+        
+        .game-info {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .score-display, .combo-display {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .label {
+            font-size: 12px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+        
+        .value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #3b82f6;
+        }
+        
+        .combo-display .value {
+            color: #10b981;
+        }
+        
+        .pause-btn {
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid #3b82f6;
+            color: #3b82f6;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        .game-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(180deg, #0f172a 0%, #1a1f35 100%);
+        }
+        
+        .note {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+            transition: all 0.1s;
+        }
+        
+        .note:active {
+            transform: scale(0.8);
+        }
+        
+        .tap-zone {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 400px;
+            height: 100px;
+            border: 2px solid rgba(59, 130, 246, 0.5);
+            border-radius: 20px;
+            background: rgba(59, 130, 246, 0.1);
+        }
+        
+        .feedback {
+            position: absolute;
+            font-size: 24px;
+            font-weight: bold;
+            pointer-events: none;
+            animation: floatUp 1s ease-out forwards;
+        }
+        
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-50px); }
+        }
+        
+        .perfect { color: #10b981; }
+        .good { color: #3b82f6; }
+        .miss { color: #ef4444; }
+        
+        /* RESULTS SCREEN */
+        .results-screen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .results-screen h2 {
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+        
+        .final-score {
+            font-size: 64px;
+            font-weight: 700;
+            color: #3b82f6;
+            margin-bottom: 10px;
+        }
+        
+        .results-stats {
+            background: rgba(30, 41, 59, 0.7);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            width: 100%;
+            max-width: 300px;
+        }
+        
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+        }
+        
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+        
+        .badge-display {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .badge {
+            font-size: 48px;
+            padding: 10px;
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 12px;
+            border: 2px solid #3b82f6;
+        }
+        
+        /* BADGES SCREEN */
+        .badges-screen {
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .badges-screen h2 {
+            font-size: 32px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .badges-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .badge-card {
+            background: rgba(30, 41, 59, 0.7);
+            border: 2px solid rgba(59, 130, 246, 0.2);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .badge-card.locked {
+            opacity: 0.5;
+        }
+        
+        .badge-icon {
+            font-size: 40px;
+            margin-bottom: 8px;
+        }
+        
+        .badge-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: #94a3b8;
+        }
+    </style>
+</head>
+<body>
+    <!-- MENU SCREEN -->
+    <div id="menuScreen" class="screen active menu-screen">
+        <h1>🎵 Beat Tap</h1>
+        <p>Tap to the rhythm!</p>
+        <div class="menu-buttons">
+            <button class="btn" onclick="showScreen('customization')">Play</button>
+            <button class="btn btn-secondary" onclick="showScreen('badges')">Badges</button>
+        </div>
+    </div>
+    
+    <!-- CUSTOMIZATION SCREEN -->
+    <div id="customizationScreen" class="screen customization-screen">
+        <h2>Choose Your Ball</h2>
+        <div class="character-preview" id="characterPreview">🟠</div>
+        
+        <div class="color-picker" id="colorPicker"></div>
+        
+        <button class="btn" style="margin-top: 20px;" onclick="showScreen('difficulty')">Next</button>
+        <button class="btn btn-secondary" onclick="showScreen('menu')">Back</button>
+    </div>
+    
+    <!-- DIFFICULTY SCREEN -->
+    <div id="difficultyScreen" class="screen difficulty-screen">
+        <h2>Select Difficulty</h2>
+        <div class="difficulty-grid">
+            <button class="difficulty-btn" onclick="startGame('easy')">🎵 Easy - Chill beats</button>
+            <button class="difficulty-btn" onclick="startGame('medium')">🎵🎵 Medium - More notes</button>
+            <button class="difficulty-btn" onclick="startGame('hard')">🎵🎵🎵 Hard - Non-stop</button>
+        </div>
+        <button class="btn btn-secondary" style="margin-top: 30px;" onclick="showScreen('customization')">Back</button>
+    </div>
+    
+    <!-- GAME SCREEN -->
+    <div id="gameScreen" class="screen game-screen">
+        <div class="game-header">
+            <div class="game-info">
+                <div class="score-display">
+                    <div class="label">Score</div>
+                    <div class="value" id="scoreDisplay">0</div>
+                </div>
+                <div class="combo-display">
+                    <div class="label">Combo</div>
+                    <div class="value" id="comboDisplay">0</div>
+                </div>
+            </div>
+            <button class="pause-btn" onclick="endGame()">End</button>
+        </div>
+        <div class="game-container" id="gameContainer">
+            <div class="tap-zone" id="tapZone"></div>
+        </div>
+    </div>
+    
+    <!-- RESULTS SCREEN -->
+    <div id="resultsScreen" class="screen results-screen">
+        <h2>Game Over!</h2>
+        <div class="final-score" id="finalScore">0</div>
+        <div class="results-stats">
+            <div class="stat-row">
+                <span>Perfect Hits</span>
+                <span id="perfectCount">0</span>
+            </div>
+            <div class="stat-row">
+                <span>Good Hits</span>
+                <span id="goodCount">0</span>
+            </div>
+            <div class="stat-row">
+                <span>Missed</span>
+                <span id="missCount">0</span>
+            </div>
+            <div class="stat-row">
+                <span>Accuracy</span>
+                <span id="accuracy">0%</span>
+            </div>
+        </div>
+        <div class="badge-display" id="newBadges"></div>
+        <button class="btn" onclick="showScreen('menu')">Back to Menu</button>
+    </div>
+    
+    <!-- BADGES SCREEN -->
+    <div id="badgesScreen" class="screen badges-screen">
+        <h2>🏆 Badges</h2>
+        <div class="badges-grid" id="badgesGrid"></div>
+        <button class="btn" style="margin-bottom: 20px;" onclick="showScreen('menu')">Back</button>
+    </div>
+
+    <script>
+        // Game State
+        let gameState = {
+            score: 0,
+            combo: 0,
+            difficulty: 'easy',
+            selectedColor: '🟠',
+            notes: [],
+            perfect: 0,
+            good: 0,
+            missed: 0,
+            gameActive: false,
+            startTime: 0,
+            badges: JSON.parse(localStorage.getItem('badges')) || {}
+        };
+        
+        const colors = {
+            '🟠': '#ff8c42',
+            '🔵': '#3b82f6',
+            '🟢': '#10b981',
+            '🟣': '#a855f7',
+            '🔴': '#ef4444',
+            '🟡': '#eab308',
+            '⚪': '#f1f5f9',
+            '🤎': '#a16207'
+        };
+        
+        const allBadges = {
+            'first': { name: '🎯 First Steps', desc: 'Play your first game' },
+            'score100': { name: '💯 Century', desc: 'Score 100 points' },
+            'score500': { name: '🔥 On Fire', desc: 'Score 500 points' },
+            'score1000': { name: '⭐ Legend', desc: 'Score 1000 points' },
+            'combo10': { name: '🔗 Streak', desc: 'Get 10 combo' },
+            'combo25': { name: '💪 Master', desc: 'Get 25 combo' },
+            'perfect': { name: '✨ Perfect', desc: '5 perfect hits in a row' },
+            'easyMode': { name: '😎 Chill', desc: 'Complete Easy mode' },
+            'mediumMode': { name: '💪 Challenge', desc: 'Complete Medium mode' },
+            'hardMode': { name: '🤯 Extreme', desc: 'Complete Hard mode' }
+        };
+        
+        function showScreen(screenName) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenName + 'Screen').classList.add('active');
+        }
+        
+        function initCustomization() {
+            const picker = document.getElementById('colorPicker');
+            picker.innerHTML = Object.keys(colors).map(color => `
+                <div class="color-option ${color === gameState.selectedColor ? 'selected' : ''}" 
+                     style="background-color: ${colors[color]};"
+                     onclick="selectColor('${color}')"></div>
+            `).join('');
+            updateCharacterPreview();
+        }
+        
+        function selectColor(color) {
+            gameState.selectedColor = color;
+            document.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('selected'));
+            document.querySelector(`[onclick="selectColor('${color}')"]`).classList.add('selected');
+            updateCharacterPreview();
+        }
+        
+        function updateCharacterPreview() {
+            document.getElementById('characterPreview').textContent = gameState.selectedColor;
+        }
+        
+        function startGame(difficulty) {
+            gameState.difficulty = difficulty;
+            gameState.score = 0;
+            gameState.combo = 0;
+            gameState.perfect = 0;
+            gameState.good = 0;
+            gameState.missed = 0;
+            gameState.gameActive = true;
+            gameState.startTime = Date.now();
+            gameState.notes = [];
+            
+            showScreen('game');
+            document.getElementById('gameContainer').innerHTML = '<div class="tap-zone" id="tapZone"></div>';
+            
+            generateNotes();
+            gameLoop();
+        }
+        
+        function generateNotes() {
+            const count = gameState.difficulty === 'easy' ? 15 : gameState.difficulty === 'medium' ? 25 : 35;
+            const spacing = 60000 / count; // 60 second game
+            
+            for (let i = 0; i < count; i++) {
+                setTimeout(() => {
+                    if (gameState.gameActive) {
+                        const container = document.getElementById('gameContainer');
+                        if (container) {
+                            const note = createNote();
+                            container.appendChild(note);
+                        }
+                    }
+                }, spacing * i);
+            }
+            
+            setTimeout(() => {
+                if (gameState.gameActive) endGame();
+            }, 60000);
+        }
+        
+        function createNote() {
+            const note = document.createElement('div');
+            note.className = 'note';
+            note.textContent = gameState.selectedColor;
+            note.style.background = colors[gameState.selectedColor];
+            
+            const startX = Math.random() * (window.innerWidth - 60);
+            const duration = gameState.difficulty === 'easy' ? 3000 : gameState.difficulty === 'medium' ? 2000 : 1200;
+            const tapZone = document.getElementById('tapZone');
+            const tapZoneTop = window.innerHeight - 120;
+            
+            note.style.left = startX + 'px';
+            note.style.top = '20px';
+            
+            let tapped = false;
+            const startTime = Date.now();
+            
+            note.onclick = (e) => {
+                e.stopPropagation();
+                if (!tapped) {
+                    tapped = true;
+                    const elapsed = Date.now() - startTime;
+                    const tolerance = 150;
+                    
+                    if (elapsed >= duration - tolerance && elapsed <= duration + tolerance) {
+                        const accuracy = Math.abs(elapsed - duration);
+                        if (accuracy < 50) {
+                            gameState.perfect++;
+                            gameState.score += 100;
+                            showFeedback('Perfect!', note, '#10b981');
+                        } else {
+                            gameState.good++;
+                            gameState.score += 50;
+                            showFeedback('Good!', note, '#3b82f6');
+                        }
+                        gameState.combo++;
+                    } else {
+                        gameState.missed++;
+                        gameState.combo = 0;
+                        showFeedback('Miss!', note, '#ef4444');
+                    }
+                    
+                    updateDisplay();
+                    note.style.display = 'none';
+                }
+            };
+            
+            const animationInterval = setInterval(() => {
+                if (!tapped) {
+                    const progress = (Date.now() - startTime) / duration;
+                    note.style.top = (20 + progress * tapZoneTop) + 'px';
+                    
+                    if (progress >= 1) {
+                        clearInterval(animationInterval);
+                        if (!tapped) {
+                            gameState.missed++;
+                            gameState.combo = 0;
+                            showFeedback('Missed!', note, '#ef4444');
+                            updateDisplay();
+                        }
+                        note.style.display = 'none';
+                    }
+                }
+            }, 16);
+            
+            return note;
+        }
+        
+        function showFeedback(text, element, color) {
+            const feedback = document.createElement('div');
+            feedback.className = 'feedback';
+            feedback.textContent = text;
+            feedback.style.color = color;
+            feedback.style.left = element.style.left;
+            feedback.style.top = element.style.top;
+            document.getElementById('gameContainer').appendChild(feedback);
+        }
+        
+        function updateDisplay() {
+            document.getElementById('scoreDisplay').textContent = gameState.score;
+            document.getElementById('comboDisplay').textContent = gameState.combo;
+        }
+        
+        function gameLoop() {
+            if (gameState.gameActive) {
+                updateDisplay();
+                requestAnimationFrame(gameLoop);
+            }
+        }
+        
+        function endGame() {
+            gameState.gameActive = false;
+            const total = gameState.perfect + gameState.good + gameState.missed;
+            const accuracy = total > 0 ? Math.round((gameState.perfect + gameState.good) / total * 100) : 0;
+            
+            checkBadges(accuracy);
+            
+            document.getElementById('finalScore').textContent = gameState.score;
+            document.getElementById('perfectCount').textContent = gameState.perfect;
+            document.getElementById('goodCount').textContent = gameState.good;
+            document.getElementById('missCount').textContent = gameState.missed;
+            document.getElementById('accuracy').textContent = accuracy + '%';
+            
+            displayNewBadges();
+            showScreen('results');
+        }
+        
+        function checkBadges(accuracy) {
+            const newBadges = [];
+            
+            if (!gameState.badges['first']) {
+                gameState.badges['first'] = true;
+                newBadges.push('first');
+            }
+            
+            if (gameState.score >= 100 && !gameState.badges['score100']) {
+                gameState.badges['score100'] = true;
+                newBadges.push('score100');
+            }
+            
+            if (gameState.score >= 500 && !gameState.badges['score500']) {
+                gameState.badges['score500'] = true;
+                newBadges.push('score500');
+            }
+            
+            if (gameState.score >= 1000 && !gameState.badges['score1000']) {
+                gameState.badges['score1000'] = true;
+                newBadges.push('score1000');
+            }
+            
+            if (gameState.combo >= 10 && !gameState.badges['combo10']) {
+                gameState.badges['combo10'] = true;
+                newBadges.push('combo10');
+            }
+            
+            if (gameState.combo >= 25 && !gameState.badges['combo25']) {
+                gameState.badges['combo25'] = true;
+                newBadges.push('combo25');
+            }
+            
+            if (gameState.perfect >= 5 && !gameState.badges['perfect']) {
+                gameState.badges['perfect'] = true;
+                newBadges.push('perfect');
+            }
+            
+            if (gameState.difficulty === 'easy' && !gameState.badges['easyMode']) {
+                gameState.badges['easyMode'] = true;
+                newBadges.push('easyMode');
+            }
+            
+            if (gameState.difficulty === 'medium' && !gameState.badges['mediumMode']) {
+                gameState.badges['mediumMode'] = true;
+                newBadges.push('mediumMode');
+            }
+            
+            if (gameState.difficulty === 'hard' && !gameState.badges['hardMode']) {
+                gameState.badges['hardMode'] = true;
+                newBadges.push('hardMode');
+            }
+            
+            localStorage.setItem('badges', JSON.stringify(gameState.badges));
+            
+            return newBadges;
+        }
+        
+        function displayNewBadges() {
+            const container = document.getElementById('newBadges');
+            const newBadges = Object.keys(gameState.badges);
+            
+            container.innerHTML = newBadges.slice(-3).map(badge => `
+                <div class="badge">${allBadges[badge].name}</div>
+            `).join('');
+        }
+        
+        function displayAllBadges() {
+            const grid = document.getElementById('badgesGrid');
+            grid.innerHTML = Object.entries(allBadges).map(([key, badge]) => `
+                <div class="badge-card ${!gameState.badges[key] ? 'locked' : ''}">
+                    <div class="badge-icon">${badge.name.split(' ')[0]}</div>
+                    <div class="badge-name">${badge.name}</div>
+                </div>
+            `).join('');
+        }
+        
+        // Initialize
+        initCustomization();
+        displayAllBadges();
+        
+        // Set today's date
+        const today = new Date().toISOString().split('T')[0];
+    </script>
+</body>
+</html>
